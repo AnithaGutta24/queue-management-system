@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Live Queue Display | CareQueue{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="30">{% endblock %}
+{% block content %}
+<section class="display-hero">
+  <p class="eyebrow">HOSPITAL REGISTRATION</p>
+  <h1>Queue display</h1>
+  <p class="muted">Please listen for your token and follow staff instructions.</p>
+</section>
+<section class="display-grid">
+  <article class="current-card">
+    <span class="current-label">NOW SERVING</span>
+    <div id="current-token" class="current-token">—</div>
+    <p id="current-department">Waiting for next patient</p>
+  </article>
+  <article class="waiting-card">
+    <div class="section-heading"><div><span class="current-label">UP NEXT</span><h2>Waiting tokens</h2></div><span class="count-badge" id="waiting-count">0</span></div>
+    <div id="waiting-list" class="waiting-list"><p class="muted">Loading queue…</p></div>
+  </article>
+</section>
+<section class="display-footer">
+  <div><span class="dot"></span> Queue updates automatically</div>
+  <div>Last updated: <strong id="updated-at">—</strong></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshQueue() {
+  try {
+    const response = await fetch("{{ url_for('api_queue') }}", {cache: "no-store"});
+    const data = await response.json();
+    document.getElementById("current-token").textContent =
+      data.current ? data.current.token_label : "—";
+    document.getElementById("current-department").textContent =
+      data.current ? data.current.department : "No patient is being served";
+    document.getElementById("waiting-count").textContent = data.waiting_count;
+    document.getElementById("updated-at").textContent = data.updated_at;
+    const list = document.getElementById("waiting-list");
+    list.replaceChildren();
+    if (!data.waiting.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "No patients are waiting.";
+      list.appendChild(empty);
+    } else {
+      data.waiting.slice(0, 8).forEach((patient, index) => {
+        const row = document.createElement("div");
+        row.className = "waiting-row";
+        const token = document.createElement("strong");
+        token.textContent = patient.token_label;
+        const dept = document.createElement("span");
+        dept.textContent = patient.department;
+        const position = document.createElement("small");
+        position.textContent = "Next " + (index + 1);
+        row.append(token, dept, position);
+        list.appendChild(row);
+      });
+    }
+  } catch (error) {
+    document.getElementById("updated-at").textContent = "Connection error";
+  }
+}
+refreshQueue();
+setInterval(refreshQueue, 5000);
+</script>
+{% endblock %}
